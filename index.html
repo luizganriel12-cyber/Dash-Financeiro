@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Financeiro</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#0a0a0a;color:#e0e0e0;padding:0 1rem 2rem}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:1.2rem 0 1rem;border-bottom:1px solid #1a1a1a;margin-bottom:1rem}
+.logo{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:#f0f0f0}
+.dot{width:8px;height:8px;border-radius:50%;background:#1D9E75;animation:pulse 1.4s infinite}
+.upd{font-size:11px;color:#444}
+.rbtn{background:#111;border:1px solid #222;border-radius:8px;padding:5px 14px;font-size:12px;font-weight:700;color:#777;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s}
+.rbtn:hover{background:#181818;color:#ccc;border-color:#333}
+.rspin{animation:spin .6s linear infinite;display:inline-block}
+
+.ticker{overflow:hidden;background:#0f0f0f;border:1px solid #1a1a1a;border-radius:8px;padding:7px 0;margin-bottom:1rem}
+.ttrack{display:flex;gap:28px;white-space:nowrap;animation:marquee 40s linear infinite;width:max-content}
+.ticker:hover .ttrack{animation-play-state:paused}
+.titem{display:inline-flex;align-items:center;gap:5px;font-size:12px}
+.tsym{font-weight:700;color:#ddd}
+.tprc{color:#555}
+.tchg{font-size:11px;font-weight:700}
+
+.tabs{display:flex;gap:6px;margin-bottom:1rem}
+.tab{padding:7px 18px;border-radius:8px;border:1px solid #1e1e1e;background:#0f0f0f;font-size:13px;font-weight:700;cursor:pointer;color:#555;transition:all .15s}
+.tab.active{background:#181818;color:#f0f0f0;border-color:#333}
+.tab:hover:not(.active){color:#ccc;border-color:#2a2a2a;background:#141414}
+
+.sec{display:none}.sec.active{display:block;animation:fadeUp .2s ease-out}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:8px;margin-bottom:1rem}
+.card{background:#0f0f0f;border:1px solid #1a1a1a;border-radius:10px;padding:.85rem .95rem;position:relative;overflow:hidden;transition:border-color .2s,transform .15s}
+.card:hover{border-color:#2a2a2a;transform:translateY(-2px)}
+.caccent{position:absolute;top:0;left:0;right:0;height:2px}
+.cname{font-size:10px;color:#444;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px}
+.ctick{font-size:12px;font-weight:700;color:#bbb;margin-bottom:7px}
+.cprice{font-size:17px;font-weight:700;color:#f0f0f0;margin-bottom:3px}
+.cchg{font-size:12px;font-weight:700}
+.cvol{font-size:10px;color:#333;margin-top:5px}
+.crec{font-size:10px;margin-top:6px;padding:4px 7px;border-radius:6px;font-weight:700;display:flex;align-items:center;gap:4px}
+.rec-buy{background:rgba(29,158,117,.12);color:#1D9E75;border:1px solid rgba(29,158,117,.25)}
+.rec-sell{background:rgba(226,75,74,.12);color:#E24B4A;border:1px solid rgba(226,75,74,.25)}
+.rec-hold{background:rgba(200,150,10,.1);color:#c8960a;border:1px solid rgba(200,150,10,.2)}
+.up{color:#1D9E75}.dn{color:#E24B4A}
+
+.cwrap{background:#0f0f0f;border:1px solid #1a1a1a;border-radius:10px;padding:1rem 1.2rem;margin-bottom:.8rem}
+.chead{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+.ctitle{font-size:13px;font-weight:700;color:#ddd}
+.csub{font-size:11px;color:#444;margin-top:2px}
+.leg{display:flex;gap:12px;font-size:11px;color:#555}
+.legdot{width:7px;height:7px;border-radius:2px;display:inline-block;margin-right:3px;vertical-align:middle}
+
+.badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700;margin-left:8px;vertical-align:middle}
+.badge-live{background:rgba(29,158,117,.15);color:#1D9E75;border:1px solid rgba(29,158,117,.3)}
+.badge-sim{background:rgba(255,180,0,.1);color:#c8960a;border:1px solid rgba(255,180,0,.2)}
+
+.loading{display:flex;flex-direction:column;align-items:center;gap:10px;padding:2rem;color:#444}
+.loader{width:24px;height:24px;border:2px solid #222;border-top-color:#1D9E75;border-radius:50%;animation:spin .8s linear infinite}
+.errmsg{padding:1.2rem;color:#E24B4A;font-size:12px;background:rgba(226,75,74,.05);border:1px solid rgba(226,75,74,.15);border-radius:8px;text-align:center}
+
+.disclaimer{font-size:10px;color:#333;text-align:center;margin-top:1rem;padding:0 1rem}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="logo">
+    <div class="dot"></div>
+    mercado ao vivo
+    <span class="badge badge-sim" id="mode-badge">simulado</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span class="upd" id="upd">—</span>
+    <button class="rbtn" onclick="loadAll()"><span id="rico">↻</span> atualizar</button>
+  </div>
+</div>
+
+<div class="ticker"><div class="ttrack" id="ttrack">—</div></div>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('acoes',this)">📈 Ações B3</button>
+  <button class="tab" onclick="showTab('cripto',this)">₿ Cripto</button>
+  <button class="tab" onclick="showTab('cambio',this)">💱 Câmbio</button>
+</div>
+
+<div class="sec active" id="sec-acoes">
+  <div class="cards" id="cards-acoes"><div class="loading"><div class="loader"></div>buscando ações...</div></div>
+  <div class="cwrap">
+    <div class="chead">
+      <div><div class="ctitle">Variação do dia — B3</div><div class="csub">em %</div></div>
+      <div class="leg"><span><span class="legdot" style="background:#1D9E75"></span>alta</span><span><span class="legdot" style="background:#E24B4A"></span>queda</span></div>
+    </div>
+    <div style="height:200px"><canvas id="ch-acoes"></canvas></div>
+  </div>
+</div>
+
+<div class="sec" id="sec-cripto">
+  <div class="cards" id="cards-cripto"><div class="loading"><div class="loader"></div>buscando criptos...</div></div>
+  <div class="cwrap">
+    <div class="chead">
+      <div><div class="ctitle">Variação 24h — Cripto</div><div class="csub">em USD %</div></div>
+      <div class="leg"><span><span class="legdot" style="background:#1D9E75"></span>alta</span><span><span class="legdot" style="background:#E24B4A"></span>queda</span></div>
+    </div>
+    <div style="height:200px"><canvas id="ch-cripto"></canvas></div>
+  </div>
+</div>
+
+<div class="sec" id="sec-cambio">
+  <div class="cards" id="cards-cambio"><div class="loading"><div class="loader"></div>buscando câmbio...</div></div>
+  <div class="cwrap">
+    <div class="chead">
+      <div><div class="ctitle">Variação — Câmbio vs BRL</div><div class="csub">em %</div></div>
+      <div class="leg"><span><span class="legdot" style="background:#1D9E75"></span>alta</span><span><span class="legdot" style="background:#E24B4A"></span>queda</span></div>
+    </div>
+    <div style="height:200px"><canvas id="ch-cambio"></canvas></div>
+  </div>
+</div>
+
+<div class="disclaimer">⚠️ As recomendações são baseadas apenas na variação do dia e não constituem conselho financeiro profissional.</div>
+
+<script>
+const CH={};
+const API='http://localhost:3001/api';
+const simData={
+  acoes:[
+    {name:'Petrobras',ticker:'PETR4',price:38.20,change:1.4,vol:'42.1M'},
+    {name:'Vale',ticker:'VALE3',price:61.80,change:-0.8,vol:'31.5M'},
+    {name:'Itaú',ticker:'ITUB4',price:35.90,change:0.5,vol:'18.2M'},
+    {name:'Bradesco',ticker:'BBDC4',price:14.70,change:-1.2,vol:'22.4M'},
+    {name:'Ambev',ticker:'ABEV3',price:11.40,change:0.3,vol:'15.6M'},
+    {name:'WEG',ticker:'WEGE3',price:52.10,change:2.1,vol:'9.3M'},
+    {name:'Lojas Renner',ticker:'LREN3',price:16.80,change:-0.6,vol:'8.7M'},
+    {name:'Magalu',ticker:'MGLU3',price:7.20,change:-2.3,vol:'55.1M'},
+  ],
+  cripto:[
+    {name:'Bitcoin',ticker:'BTC',price:108420,change:1.8},
+    {name:'Ethereum',ticker:'ETH',price:2610,change:-0.9},
+    {name:'Solana',ticker:'SOL',price:172,change:3.2},
+    {name:'XRP',ticker:'XRP',price:2.31,change:0.7},
+    {name:'Cardano',ticker:'ADA',price:0.72,change:-1.5},
+    {name:'Dogecoin',ticker:'DOGE',price:0.198,change:2.4},
+  ],
+  cambio:[
+    {name:'Dólar',ticker:'USD/BRL',price:5.72,change:0.3},
+    {name:'Euro',ticker:'EUR/BRL',price:6.45,change:-0.2},
+    {name:'Libra',ticker:'GBP/BRL',price:7.61,change:0.1},
+    {name:'Iene',ticker:'JPY/BRL',price:0.038,change:-0.4},
+    {name:'Peso AR',ticker:'ARS/BRL',price:0.0058,change:-0.8},
+    {name:'Dólar CA',ticker:'CAD/BRL',price:4.18,change:0.2},
+  ]
+};
+let isLive=false;
+
+function showTab(id,btn){
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  btn.classList.add('active');
+  setTimeout(()=>{if(CH['ch-'+id])CH['ch-'+id].resize();},30);
+}
+
+function fmtChg(v){return(v>=0?'+':'')+Number(v).toFixed(2)+'%'}
+function fmtBRL(v){return'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function fmtUSD(v){
+  if(v>=1000)return'$ '+Number(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return'$ '+Number(v).toFixed(v<1?4:2);
+}
+
+function analyzeAsset(item,elId){
+  const el=document.getElementById(elId);
+  if(!el)return;
+  const c=item.change;
+  let signal,emoji,text;
+  if(c<=-3){signal='buy';emoji='📈';text='Queda forte — oportunidade de entrada';}
+  else if(c<=-1.5){signal='buy';emoji='📈';text='Recuo moderado — considere comprar';}
+  else if(c<-0.3){signal='hold';emoji='⏸️';text='Leve queda — aguarde confirmação';}
+  else if(c<=0.3){signal='hold';emoji='⏸️';text='Estável — sem sinal claro';}
+  else if(c<=1.5){signal='hold';emoji='⏸️';text='Alta leve — mantenha posição';}
+  else if(c<=3){signal='sell';emoji='📉';text='Alta relevante — realize lucros';}
+  else{signal='sell';emoji='📉';text='Alta forte — risco de correção';}
+  const cls=signal==='buy'?'rec-buy':signal==='sell'?'rec-sell':'rec-hold';
+  el.className=`crec ${cls}`;
+  el.innerHTML=`${emoji} ${text}`;
+}
+
+function renderCards(id,items,fmt){
+  document.getElementById(id).innerHTML=items.map((i,idx)=>`
+    <div class="card">
+      <div class="caccent" style="background:${i.change>=0?'#1D9E75':'#E24B4A'}"></div>
+      <div class="cname">${i.name}</div>
+      <div class="ctick">${i.ticker}</div>
+      <div class="cprice">${fmt(i.price)}</div>
+      <div class="cchg ${i.change>=0?'up':'dn'}">${fmtChg(i.change)}</div>
+      ${i.vol?`<div class="cvol">vol ${i.vol}</div>`:''}
+      <div class="crec rec-hold" id="rec-${id}-${idx}">⏳ analisando...</div>
+    </div>`).join('');
+  items.forEach((item,idx)=>analyzeAsset(item,`rec-${id}-${idx}`));
+}
+
+function drawChart(id,labels,values){
+  const canvas=document.getElementById(id);
+  if(!canvas)return;
+  if(CH[id]){CH[id].destroy();}
+  CH[id]=new Chart(canvas,{
+    type:'bar',
+    data:{labels,datasets:[{
+      data:values,
+      backgroundColor:values.map(v=>v>=0?'rgba(29,158,117,.85)':'rgba(226,75,74,.85)'),
+      borderRadius:5,borderSkipped:false
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{
+        callbacks:{label:c=>fmtChg(c.raw)},
+        backgroundColor:'#181818',titleColor:'#eee',bodyColor:'#aaa',borderColor:'#333',borderWidth:1
+      }},
+      scales:{
+        x:{grid:{display:false},ticks:{color:'#555',font:{size:11}}},
+        y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#555',font:{size:11},callback:v=>v.toFixed(1)+'%'}}
+      },
+      animation:{duration:600,easing:'easeOutQuart'}
+    }
+  });
+}
+
+function updateTicker(){
+  const all=[...simData.acoes,...simData.cripto,...simData.cambio];
+  const isCripto=i=>['BTC','ETH','SOL','XRP','ADA','DOGE'].includes(i.ticker);
+  const html=all.map(i=>`<span class="titem">
+    <span class="tsym">${i.ticker}</span>
+    <span class="tprc">${isCripto(i)?fmtUSD(i.price):fmtBRL(i.price)}</span>
+    <span class="tchg ${i.change>=0?'up':'dn'}">${fmtChg(i.change)}</span>
+  </span>`).join('');
+  document.getElementById('ttrack').innerHTML=html+html;
+}
+
+function wiggle(){
+  ['acoes','cripto','cambio'].forEach(k=>{
+    simData[k]=simData[k].map(i=>({
+      ...i,
+      price:i.price*(1+(Math.random()*2-1)*0.003),
+      change:+(i.change+((Math.random()-.5)*0.1)).toFixed(2)
+    }));
+  });
+}
+
+async function tryLive(){
+  try{
+    const rb=await fetch(`${API}/acoes`,{signal:AbortSignal.timeout(7000)});
+    const db=await rb.json();
+    if(db.results&&db.results.length){
+      simData.acoes=db.results.map(s=>({
+        name:(s.shortName||s.symbol).slice(0,16),
+        ticker:s.symbol,
+        price:s.regularMarketPrice||0,
+        change:+(s.regularMarketChangePercent||0).toFixed(2),
+        vol:s.regularMarketVolume?((s.regularMarketVolume/1e6).toFixed(1)+'M'):null
+      }));
+      isLive=true;
+    }
+  }catch{isLive=false;}
+
+  try{
+    const rp=await fetch(`${API}/cripto`,{signal:AbortSignal.timeout(5000)});
+    const dp=await rp.json();
+    const coins=[
+      {id:'bitcoin',sym:'BTC',name:'Bitcoin'},
+      {id:'ethereum',sym:'ETH',name:'Ethereum'},
+      {id:'solana',sym:'SOL',name:'Solana'},
+      {id:'ripple',sym:'XRP',name:'XRP'},
+      {id:'cardano',sym:'ADA',name:'Cardano'},
+      {id:'dogecoin',sym:'DOGE',name:'Dogecoin'},
+    ];
+    simData.cripto=coins.map(c=>({
+      name:c.name,ticker:c.sym,
+      price:parseFloat(dp[c.id]?.usd||simData.cripto.find(x=>x.ticker===c.sym)?.price||0),
+      change:+(dp[c.id]?.usd_24h_change||0).toFixed(2)
+    }));
+  }catch{}
+
+  try{
+    const rc=await fetch(`${API}/cambio`,{signal:AbortSignal.timeout(5000)});
+    const dc=await rc.json();
+    const keys=['USDBRL','EURBRL','GBPBRL','JPYBRL','ARSBRL','CADBRL'];
+    const names=['Dólar','Euro','Libra','Iene','Peso AR','Dólar CA'];
+    const syms=['USD/BRL','EUR/BRL','GBP/BRL','JPY/BRL','ARS/BRL','CAD/BRL'];
+    simData.cambio=keys.map((k,i)=>({
+      name:names[i],ticker:syms[i],
+      price:parseFloat(dc[k]?.bid||simData.cambio[i]?.price||0),
+      change:parseFloat(dc[k]?.pctChange||0)
+    }));
+  }catch{}
+}
+
+async function loadAll(){
+  const ico=document.getElementById('rico');
+  ico.classList.add('rspin');
+  wiggle();
+  await tryLive();
+  renderCards('cards-acoes',simData.acoes,fmtBRL);
+  renderCards('cards-cripto',simData.cripto,fmtUSD);
+  renderCards('cards-cambio',simData.cambio,fmtBRL);
+  drawChart('ch-acoes',simData.acoes.map(i=>i.ticker),simData.acoes.map(i=>i.change));
+  drawChart('ch-cripto',simData.cripto.map(i=>i.ticker),simData.cripto.map(i=>i.change));
+  drawChart('ch-cambio',simData.cambio.map(i=>i.ticker),simData.cambio.map(i=>i.change));
+  updateTicker();
+  ico.classList.remove('rspin');
+  document.getElementById('mode-badge').textContent=isLive?'ao vivo':'simulado';
+  document.getElementById('mode-badge').className='badge '+(isLive?'badge-live':'badge-sim');
+  document.getElementById('upd').textContent='atualizado '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+loadAll();
+setInterval(loadAll,30*1000);
+</script>
+</body>
+</html>
